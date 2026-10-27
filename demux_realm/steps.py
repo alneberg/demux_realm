@@ -6,13 +6,14 @@ from yggdrasil.flow.errors import PermanentStepError
 from yggdrasil.flow.model import StepResult
 from yggdrasil.flow.step import StepContext, step
 
+from .config import load_realm_config
 from .nextflow import (
     branch_outdir,
     branch_run_tag,
     branch_work_dir,
     build_nextflow_command,
+    parse_run_options,
     run_nextflow,
-    settings_from_env,
 )
 from .utils import (
     DEMUX_CONFIG_FILENAME,
@@ -164,16 +165,15 @@ def execute_demux(ctx: StepContext, scenario: dict) -> StepResult:
     """
     runfolder_path = Path(scenario["hpc_runfolder_path"])
 
-    # Re-render the branch samplesheet here rather than reading the
-    # generate_samplesheet step's workdir: cross-step paths are engine
-    # internals, and rendering is a pure function of the scenario payload.
-    ss_file = ctx.workdir / SAMPLESHEET_FILENAME
-    ss_file.write_text(render_bcl_convert_samplesheet(scenario["samplesheet_payload"]))
-    ctx.record_artifact(
-        SimpleArtifactRef("pipeline_samplesheet", "samplesheets"), path=ss_file
-    )
+    try:
+        run_options = parse_run_options(scenario.get("nextflow"))
+    except ValueError as exc:
+        raise PermanentStepError(
+            f"Invalid nextflow options in scenario: {exc}",
+            advice="Fix the 'nextflow' object of the demux_sample_info document.",
+        ) from exc
 
-    settings = settings_from_env()
+    settings = load_realm_config().nextflow
     tag = branch_run_tag(
         scenario["canonical_flowcell_id"],
         str(scenario["lane_id"]),
@@ -213,7 +213,7 @@ def execute_demux(ctx: StepContext, scenario: dict) -> StepResult:
 @step
 def collect_results(ctx: StepContext, scenario: dict) -> StepResult:
     """Collects demultiplexing artifacts and basic metrics from the branch's results directory."""
-    settings = settings_from_env()
+    settings = load_realm_config().nextflow
     tag = branch_run_tag(
         scenario["canonical_flowcell_id"],
         str(scenario["lane_id"]),
