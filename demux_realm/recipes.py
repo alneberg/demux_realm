@@ -9,7 +9,6 @@ from .utils import (
     DEMUX_CONFIG_FILENAME,
     RUN_INFO_XML,
     RUN_PARAMETERS_XML,
-    SAMPLESHEET_FILENAME,
     SamplesheetBranch,
 )
 
@@ -37,6 +36,7 @@ def build_demux_plan(
     branch_run_options: Mapping[tuple[str, str], NextflowRunOptions],
     branches: Sequence[SamplesheetBranch],
     branch_prerequisites: Sequence[str],
+    artifact_base: Path,
 ) -> Plan:
     """Build the flowcell's demux plan from validated planning data.
 
@@ -109,7 +109,7 @@ def build_demux_plan(
             "demux_sample_info_doc": {"metadata": metadata},
         }
 
-        samplesheet_path = str( artifact_base / ns / SAMPLESHEET_FILENAME)
+        samplesheet_path = str( artifact_base / ns / 'SampleSheet.csv' )
         run_options = branch_run_options[(branch.lane_id, branch.settings_index)]
         # Relative outputs resolve inside each producer's own work directory.
         steps += [
@@ -125,16 +125,24 @@ def build_demux_plan(
                 step_id=f"{ns}__generate_samplesheet",
                 name=f"Generate SampleSheet.csv ({label})",
                 fn_ref=f"{_PREFIX}.generate_samplesheet",
-                params={"scenario": scenario},
+                params={"scenario": scenario, "samplesheet": Path(samplesheet_path)},
                 deps=[f"{ns}__materialize_config"],
-                outputs={"samplesheet": SAMPLESHEET_FILENAME},
+                outputs={"samplesheet": samplesheet_path},
             ),
             StepSpec(
                 step_id=f"{ns}__execute_demux",
                 name=f"Execute Demux (nf-core/demultiplex) ({label})",
                 fn_ref=f"{_PREFIX}.execute_demux",
-                params={"scenario": scenario},
+                params={
+                    "scenario": {
+                        **scenario,
+                        "samplesheet_path": samplesheet_path,
+                        "nextflow": run_options.to_dict(),
+                    },
+                    "samplesheet": Path(samplesheet_path),
+                },
                 deps=[f"{ns}__generate_samplesheet"],
+                inputs={"samplesheet": samplesheet_path},
             ),
             StepSpec(
                 step_id=f"{ns}__collect_results",

@@ -340,7 +340,7 @@ def run_nextflow(cmd: list[str], log_path: Path) -> subprocess.CompletedProcess:
     Returns:
         The CompletedProcess (caller inspects returncode/stdout).
     """
-    logger.info("Running: %s", " ".join(shlex.quote(part) for part in cmd))
+    logger.info("Starting Nextflow run: %s", " ".join(shlex.quote(part) for part in cmd))
     chunks: list[str] = []
     with open(log_path, "w") as log:
         with subprocess.Popen(

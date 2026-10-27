@@ -312,6 +312,7 @@ class DemuxHandler(BaseHandler):
             branch_run_options=branch_run_options,
             branches=branches,
             branch_prerequisites=self.branch_prerequisites,
+            artifact_base = ctx.scope_dir / "artifacts" / self._plan_id(canonical_fcid),
         )
         branch_summaries = []
         for branch in branches:
