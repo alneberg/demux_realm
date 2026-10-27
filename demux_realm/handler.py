@@ -281,6 +281,25 @@ class DemuxHandler(BaseHandler):
                 )
             ]
 
+        # skip_tools may differ per samplesheet: the entry's own value, else
+        # the realm config default.
+        try:
+            branch_run_options = {
+                (branch.lane_id, branch.settings_index): resolve_run_options(
+                    branch.payload, config.nextflow
+                )
+                for branch in branches
+            }
+        except ValueError as exc:
+            return [
+                self._flowcell_diagnostic(
+                    canonical_fcid,
+                    "rejected",
+                    f"demux_sample_info has invalid skip_tools: {exc}",
+                    provenance,
+                )
+            ]
+
         plan = build_demux_plan(
             plan_id=self._plan_id(canonical_fcid),
             realm=self._require_realm_id(),
@@ -290,6 +309,7 @@ class DemuxHandler(BaseHandler):
             samplesheets=samplesheets,
             uploaded_lims_info=demux_doc.get("uploaded_lims_info", []),
             metadata=demux_doc.get("metadata", {}),
+            branch_run_options=branch_run_options,
             branches=branches,
             branch_prerequisites=self.branch_prerequisites,
         )

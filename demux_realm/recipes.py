@@ -2,8 +2,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from yggdrasil.flow.model import CONTINUE_INDEPENDENT_POLICY, Plan, StepSpec
 
+from yggdrasil.flow.model import CONTINUE_INDEPENDENT_POLICY, Plan, StepSpec
+from .nextflow import NextflowRunOptions
 from .utils import (
     DEMUX_CONFIG_FILENAME,
     RUN_INFO_XML,
@@ -33,6 +34,7 @@ def build_demux_plan(
     samplesheets: list[Any],
     uploaded_lims_info: list[Any],
     metadata: Mapping[str, Any],
+    branch_run_options: Mapping[tuple[str, str], NextflowRunOptions],
     branches: Sequence[SamplesheetBranch],
     branch_prerequisites: Sequence[str],
 ) -> Plan:
@@ -52,6 +54,9 @@ def build_demux_plan(
         samplesheets: All demux_sample_info samplesheets, in source order.
         uploaded_lims_info: demux_sample_info uploaded LIMS entries.
         metadata: demux_sample_info metadata, used by upload_results.
+        branch_run_options: The resolved per-branch Nextflow run options,
+            keyed by (lane_id, settings_index); carried only by each
+            branch's execute_demux step.
         branches: Validated branches, in plan order.
         branch_prerequisites: Shared step IDs each branch's first step depends on.
 
@@ -103,6 +108,9 @@ def build_demux_plan(
             "samplesheet_payload": branch.payload,
             "demux_sample_info_doc": {"metadata": metadata},
         }
+
+        samplesheet_path = str( artifact_base / ns / SAMPLESHEET_FILENAME)
+        run_options = branch_run_options[(branch.lane_id, branch.settings_index)]
         # Relative outputs resolve inside each producer's own work directory.
         steps += [
             StepSpec(

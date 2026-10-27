@@ -186,6 +186,7 @@ def execute_demux(ctx: StepContext, scenario: dict) -> StepResult:
         settings_index=str(scenario["settings_index"]),
         samplesheet=ss_file,
         flowcell_path=runfolder_path,
+        run_options=run_options,
     )
     log_path = ctx.workdir / "nextflow_run.log"
     proc = run_nextflow(cmd, log_path)
