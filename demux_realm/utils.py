@@ -308,7 +308,10 @@ def render_bcl_convert_samplesheet(lane_payload: dict) -> str:
     # inconsistent (e.g. a NoIndex project with the setting still enabled),
     # so coerce the setting to match the data.
     settings = dict(lane_payload["raw_samplesheet_settings"])
-    if str(settings.get("CreateFastqForIndexReads", "")).strip().lower() in ("true", "1"):
+    if str(settings.get("CreateFastqForIndexReads", "")).strip().lower() in (
+        "true",
+        "1",
+    ):
         has_index = any(
             str(row.get("index", "")).strip() or str(row.get("index2", "")).strip()
             for row in data_rows

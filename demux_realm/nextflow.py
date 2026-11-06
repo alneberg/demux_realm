@@ -181,7 +181,11 @@ def run_nextflow(cmd: list[str], log_path: Path) -> subprocess.CompletedProcess:
     chunks: list[str] = []
     with open(log_path, "w") as log:
         with subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            env=os.environ,
         ) as proc:
             assert proc.stdout is not None
             for line in proc.stdout:

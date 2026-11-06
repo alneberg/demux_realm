@@ -1,4 +1,5 @@
 import csv
+import datetime
 import logging
 import os
 from pathlib import Path
@@ -246,8 +247,28 @@ def execute_demux(ctx: StepContext, scenario: dict) -> StepResult:
         flowcell_path=runfolder_path,
     )
     log_path = ctx.workdir / "nextflow_run.log"
+    nxf_log_path = ctx.workdir / ".nextflow.log"
+    # Set NXF_LOG_FILE to ensure Nextflow writes its log to our desired location
+    os.environ["NXF_LOG_FILE"] = str(nxf_log_path)
+    # Add a unique parameter to force fresh execution
+    cmd.append(
+        f"--force-execution-timestamp={datetime.now().isoformat()}_{os.getpid()}"
+    )
+    logger.debug(f"Setting NXF_LOG_FILE={os.environ['NXF_LOG_FILE']}")
+    logger.debug(f"Current directory: {os.getcwd()}")
+    logger.debug(f"Environment variables: {list(os.environ.keys())}")
+    logger.debug(f"Nextflow command: {' '.join(cmd)}")
     proc = run_nextflow(cmd, log_path)
     ctx.record_artifact(SimpleArtifactRef("nextflow_log", "logs"), path=log_path)
+
+    # Also record the Nextflow internal log if it was created
+    if nxf_log_path.exists():
+        ctx.record_artifact(
+            SimpleArtifactRef("nextflow_internal_log", "logs"), path=nxf_log_path
+        )
+        logger.info(f"Recorded .nextflow.log artifact from {nxf_log_path}")
+    else:
+        logger.warning(f".nextflow.log was not created at {nxf_log_path}")
 
     if proc.returncode != 0:
         tail = "\n".join((proc.stdout or "").splitlines()[-20:])
